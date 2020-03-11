@@ -111,18 +111,33 @@ function ExportModal({
     }
   }
 
+  const isMobile = useIsMobile();
   return (
     <div className="ExportDialog__dialog" onKeyDown={handleKeyDown}>
       <Island padding={4}>
-        <button
-          className="ExportDialog__close"
-          onClick={onCloseRequest}
-          aria-label={t("buttons.close")}
-          ref={closeButton}
-        >
-          ╳
-        </button>
-        <h2 id="export-title">{t("buttons.export")}</h2>
+        {!isMobile && (
+          <button
+            className="ExportDialog__close"
+            onClick={onCloseRequest}
+            aria-label={t("buttons.close")}
+            ref={closeButton}
+          >
+            ╳
+          </button>
+        )}
+        <h2 id="export-title">
+          {isMobile && (
+            <button
+              className="ExportDialog__close ExportDialog__close--inline"
+              onClick={onCloseRequest}
+              aria-label={t("buttons.close")}
+              ref={closeButton}
+            >
+              ❮
+            </button>
+          )}
+          {t("buttons.export")}
+        </h2>
         <div className="ExportDialog__preview" ref={previewRef}></div>
         <div className="ExportDialog__actions">
           <Stack.Col gap={1}>
@@ -160,7 +175,6 @@ function ExportModal({
               />
             </Stack.Row>
           </Stack.Col>
-
           {actionManager.renderAction("changeProjectName")}
           <Stack.Col gap={1}>
             <div className="ExportDialog__scales">

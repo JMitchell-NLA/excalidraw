@@ -6,6 +6,12 @@
   position: relative;
 }
 
+#export-title {
+  margin-top: 0.2em;
+  display: flex;
+  align-items: center;
+}
+
 @keyframes ExportDialog__fade-in {
   from {
     opacity: 0;
@@ -17,10 +23,20 @@
   }
 }
 
-.ExportDialog__close {
+.ExportDialog__close:not(.ExportDialog__close--inline) {
   position: absolute;
-  right: calc(var(--space-factor) * 5);
-  top: calc(var(--space-factor) * 5);
+  right: calc(var(--space-factor) * 6);
+  top: calc(var(--space-factor) * 6);
+  margin: 0;
+}
+.ExportDialog__close--inline {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: calc(var(--space-factor) * 6);
+  width: calc(var(--space-factor) * 6);
+  margin-right: calc(var(--space-factor) * 2);
 }
 
 .ExportDialog__preview {
@@ -49,4 +65,20 @@
   display: flex;
   align-items: baseline;
   justify-content: flex-end;
+}
+
+@media (max-width: 600px), (max-height: 500px) and (max-width: 1000px) {
+  .ExportDialog__dialog,
+  .ExportDialog__dialog .Island {
+    height: 100%;
+  }
+  .ExportDialog__actions {
+    flex-direction: column;
+  }
+  .ExportDialog__actions > * {
+    margin-bottom: calc(var(--space-factor) * 3);
+  }
+  .ExportDialog__scales {
+    justify-content: flex-start;
+  }
 }

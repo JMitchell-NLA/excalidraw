@@ -28,3 +28,16 @@
   width: 100%;
   max-width: 100%;
 }
+
+@media (max-width: 600px), (max-height: 500px) and (max-width: 1000px) {
+  .Modal {
+    padding: 0;
+  }
+  .Modal__content {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+  }
+}
