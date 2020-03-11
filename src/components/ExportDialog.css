@@ -51,7 +51,7 @@
 
 .ExportDialog__preview canvas {
   max-width: calc(100% - var(--preview-padding) * 2);
-  max-height: 25rem;
+  max-height: 30vh;
 }
 
 .ExportDialog__actions {
@@ -71,6 +71,10 @@
   .ExportDialog__dialog,
   .ExportDialog__dialog .Island {
     height: 100%;
+    box-sizing: border-box;
+  }
+  .ExportDialog__dialog .Island {
+    overflow-y: auto;
   }
   .ExportDialog__actions {
     flex-direction: column;
