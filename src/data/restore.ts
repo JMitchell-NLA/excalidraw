@@ -118,6 +118,7 @@ export const restore = (
     //  and causing issues if retained
     if (element.type !== "selection" && !isInvisiblySmallElement(element)) {
       const migratedElement = migrateElement(element);
+      console.log(migratedElement)
       if (migratedElement) {
         elements.push(migratedElement);
       }

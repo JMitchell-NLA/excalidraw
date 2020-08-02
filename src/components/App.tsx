@@ -146,8 +146,6 @@ import {
   saveUsernameToLocalStorage,
 } from "../data/localStorage";
 
-import { restore } from "../data/restore";
-
 import throttle from "lodash.throttle";
 import { LinearElementEditor } from "../element/linearElementEditor";
 import {
@@ -158,6 +156,8 @@ import {
 } from "../groups";
 
 import axios from 'axios';
+import { clearAppStateForLocalStorage } from "../appState";
+
 
 
 /**
@@ -198,53 +198,17 @@ const gesture: Gesture = {
 declare global {
   interface Window { 
     restoreFromURL(name: string): any;
+    SaveToURL(name: string): any;
   }
 }
 
 
 
-window.restoreFromURL = function (url: string){
 
-  
 
-  const LOCAL_STORAGE_KEY = "excalidraw";
-  const LOCAL_STORAGE_KEY_STATE = "excalidraw-state";
 
-    let savedElements = null;
-    let savedState = null;
-  
-    try {
-      savedElements = localStorage.getItem(LOCAL_STORAGE_KEY);
-      savedState = localStorage.getItem(LOCAL_STORAGE_KEY_STATE);
-    } catch (error) {
-      // Unable to access localStorage
-      console.error(error);
-    }
-  
-    let elements = [];
-    if (savedElements) {
-      try {
-        elements = JSON.parse(savedElements);
-      } catch {
-        // Do nothing because elements array is already empty
-      }
-    }
-  
-    let appState = null;
-    if (savedState) {
-      try {
-        appState = JSON.parse(savedState) as AppState;
-        // If we're retrieving from local storage, we should not be collaborating
-        appState.isCollaborating = false;
-        appState.collaborators = new Map();
-        delete appState.width;
-        delete appState.height;
-      } catch {
-        // Do nothing because appState is already null
-      }
-    }
-    return restore(elements, appState);
-  };
+
+
 
 // ------ OOF!! 
 
@@ -308,6 +272,8 @@ class App extends React.Component<ExcalidrawProps, AppState> {
     height: window.innerHeight,
   };
 
+  
+
   constructor(props: any) {
     super(props);
     const defaultAppState = getDefaultAppState();
@@ -329,8 +295,38 @@ class App extends React.Component<ExcalidrawProps, AppState> {
 
     this.actionManager.registerAction(createUndoAction(history));
     this.actionManager.registerAction(createRedoAction(history));
-  }
+    
 
+    // I PUT IT HERE.
+    window.SaveToURL = (url: string) => {
+      
+      let appState = clearAppStateForLocalStorage(this.state);
+      let elements = globalSceneState.getElementsIncludingDeleted()
+      let name = "TestSave"
+
+      let appStateJSON = JSON.stringify(appState)
+      let elementsJSON = JSON.stringify(elements)
+
+      axios({
+        method: 'post',
+        url: url,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Content-Type':'application/json'
+        },
+        data: {
+          elements:elementsJSON,
+          state:appStateJSON,
+          name:name,
+        }
+      });
+    };
+
+    window.restoreFromURL = async (url: string) => {
+      let scene = await loadScene(url);
+      this.syncActionResult(scene);
+  };
+  }
   
 
   public render() {

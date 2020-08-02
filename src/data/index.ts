@@ -19,10 +19,11 @@ import { serializeAsJSON } from "./json";
 import { ExportType } from "../scene/types";
 import { restore } from "./restore";
 import { restoreFromLocalStorage } from "./localStorage";
+import { restoreFromUrl } from "./urlStorage";
 
 export { loadFromBlob } from "./blob";
 export { saveAsJSON, loadFromJSON } from "./json";
-export { saveToLocalStorage } from "./localStorage";
+export { saveToLocalStorage  } from "./localStorage";
 
 const BACKEND_GET = process.env.REACT_APP_BACKEND_V1_GET_URL;
 
@@ -364,7 +365,10 @@ export const exportCanvas = async (
 
 export const loadScene = async (id: string | null, privateKey?: string) => {
   let data;
-  if (id != null) {
+
+  if (id && (id.indexOf(':')!== -1)){
+    data = await restoreFromUrl(""+id)
+  } else if (id != null) {
     // the private key is used to decrypt the content from the server, take
     // extra care not to leak it
     data = await importFromBackend(id, privateKey);
