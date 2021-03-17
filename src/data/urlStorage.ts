@@ -1,6 +1,7 @@
 import { AppState, LibraryItems } from "../types";
 import { restore } from "./restore";
 import { getDefaultAppState } from "../appState";
+import Window from "../components/App"
 const axios = require('axios');
 
 /*
@@ -61,6 +62,12 @@ export const restoreFromUrl = async (url:String):Promise<any> => {
       }
       console.log(elements)
       console.log(appState)
+
+      window.lastHttpStatus = response.status+""
+      let leadingDigit = window.lastHttpStatus.substr(0,1);
+      if(leadingDigit === "2"){
+        window.lastSuccessfulPut = new Date();
+      }
     
       return restore(elements, appState);
     

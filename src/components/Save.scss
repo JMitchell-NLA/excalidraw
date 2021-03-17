@@ -1,0 +1,104 @@
+.Save-fixed-right-positioner { 
+  display:flex;
+  position: absolute;
+  height: 100vh;
+  width: 100vw;
+  background-color: #ffffff33;
+  top: 0px;
+  flex-direction: row-reverse;
+  pointer-events: none;
+}
+
+.Save-container-pane { 
+  flex-direction: row;
+  align-self: center;
+  display: flex;
+  min-width: 300px;
+  min-height: 400px;
+  background-color: #ffffff33;
+  justify-self: end;
+  border-radius: 5px;
+  flex-wrap: wrap;
+  pointer-events:all; 
+}
+
+.Save-pane-content-container { 
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  max-height: 80vh;
+  overflow-y:scroll;
+}
+
+.Save-pane-header {
+  color: #aaaaaa;
+  width: 100%;
+  text-align:center;
+}
+
+.Save-search-box-container {
+  width:100%;
+  border-radius:4px;
+  background-color:#aaaa;
+}
+
+.Save-search-box {
+  width:100%;
+  border-radius:4px;
+  background-color:#aaaa;
+}
+
+.Save-entry-container{
+  background-color: #9999;
+  display: flex;
+}
+
+.Save-entry-name{
+  color: #ddd;
+  margin-left: 10px;
+  flex-grow: 1;
+}
+
+.Save-pane-button{
+  height: 32px;
+  min-width: 32px;
+  background-color: #aaaa;
+  border-radius: 5px;
+  align-self: center;
+  border-right: 10px;
+  margin: 2.5px;
+  display: flex;
+}
+
+.Save-pane-button:active{
+  background-color: #000;
+}
+
+.Save-button-icon{
+  align-self: center;
+  justify-self: center;
+  margin:auto;
+  flex-grow: 1;
+  color:#fff;
+}
+
+.Save-hidden-save{
+  display:none
+}
+
+.Save-collapsed-save {
+  background-color: #aaaa;
+  min-width: 30px;
+  height: 32px;
+  align-self: center;
+  border-radius: 6px 0px 0px 6px;
+  display:flex;
+  pointer-events: all;
+}
+
+.Save-close-icon {
+  margin-right: 10px;
+}
+
+
+

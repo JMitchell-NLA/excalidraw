@@ -4,6 +4,7 @@ import rough from "roughjs/bin/rough";
 import { RoughCanvas } from "roughjs/bin/canvas";
 import { simplify, Point } from "points-on-curve";
 import { FlooredNumber, SocketUpdateData } from "../types";
+import Save from "./Save"
 
 import {
   newElement,
@@ -157,6 +158,7 @@ import {
 
 import axios from 'axios';
 import { clearAppStateForLocalStorage } from "../appState";
+//import { resolveModuleNameFromCache } from "typescript";
 
 
 
@@ -194,68 +196,53 @@ const gesture: Gesture = {
 };
 
 
+interface windowFuncs {   // It may be that the functions should be declared here instead
+  // of the body of typescript.
+// TS linter may be helpful here.
+restoreFromURL(name: string): any; // implemented
+SaveToURL(url:string,name: string): any; // implemented
+listDocs():any; // lists cached docs - complains if there's no server
+fetchDocs():any; // populates docs cache , depends on activcate cloud lists docs.
+loadDoc(id:number,isRefresh?:boolean):any; // loads a doc by index from the server
+getVersions(id:number):any; // lists version for a given ID - not implemented servderside
+saveAlt(id:number):any;
+activateCloud(URL:string):any; // should set the server URL, then fetch + list the docs.
+saveActiveDoc():any;
+saveNewDoc(name:string):any;
+activeDocIndex:number;
+activeDocName:String;
+isOnOldVersion:boolean;
+isCloudConnected:boolean;
+serverURL:string;
+SaveDoc():any;
+cloudDocs:CloudDocInfo[];
+docsUpToDate:boolean;
+OverwriteDoc():any;
+lastHttpStatus:string;
+lastSuccessfulPut:Date;
+reloadDoc():any;
+firstReload:boolean;
+}
 
 
 // All this to add a function to the window?   .. OOF!
 declare global {
-  class CloudDocInfo{
-    id:number;
-    name:string;
-    dateLastSaved:Date;
-  }
+  interface Window extends windowFuncs{
 
-  // THE WINDOW
-
-/*
- -  The diffiuclty presented here is that we want to avoid an empty state
-     being saved to the Database.  We would assume that to prevent 
-     this we would 
-     
-     1) don't save if fetching the doc fails. 
-
-    2) As an extra safeguard, don't save if all elements are blank.
-
-    3) 
-
-
-
-*/
-
-  export interface Window {   // It may be that the functions should be declared here instead
-                       // of the body of typescript.
-                       // TS linter may be helpful here.
-    restoreFromURL(name: string): any; // implemented
-    SaveToURL(url:string,name: string): any; // implemented
-    listDocs():any; // lists cached docs - complains if there's no server 
-    fetchDocs():any; // populates docs cache , depends on activcate cloud lists docs.
-    loadDoc(id:number):any; // loads a doc by index from the server 
-    loadDoc(id:number,ver:number):any; // load a doc and an index 
-    getVersions(id:number):any; // lists version for a given ID - not implemented servderside
-    saveAlt(id:number):any; 
-    activateCloud(URL:string):any; // should set the server URL, then fetch + list the docs.
-    saveActiveDoc():any;
-    saveNewDoc(name:string):any;
-    activeDocIndex:number;
-    activeDocName:String;
-    isOnOldVersion:boolean;
-    isCloudConnected:boolean;
-    serverURL:string;
-    SaveDoc():any;
-    cloudDocs:CloudDocInfo[];
-    docsUpToDate:boolean;
-    
-  }
+    }
 }
 
 
+interface CloudDocInfo{
+  id:number;
+  name:string;
+  dateLastSaved:Date;
+}
 
+export type {CloudDocInfo}; // type safe way to do this. 
+export type {windowFuncs};
 
-
-
-
-
-
-// ------ OOF!! 
+// ------ OOF!!
 
 
 type PointerDownState = Readonly<{
@@ -317,7 +304,7 @@ class App extends React.Component<ExcalidrawProps, AppState> {
     height: window.innerHeight,
   };
 
-  
+
 
   constructor(props: any) {
     super(props);
@@ -340,65 +327,110 @@ class App extends React.Component<ExcalidrawProps, AppState> {
 
     this.actionManager.registerAction(createUndoAction(history));
     this.actionManager.registerAction(createRedoAction(history));
-    
 
-    // I PUT IT HERE.
-    window.SaveToURL = async (url:string,name:string) => {
+
+    // I PUT IT HERE!
+    // window.OverwriteDoc = (id:number) => {  WILL IMPLEMENT EVENTUALLY BUT RN THERE's A WORKAROUND!
+    //     if (!window.isCloudConnected){
+    //       console.log("Can't do this if you aren't connected");
+    //       return;
+    //     }
+    //     window.activeDocIndex = id;
+    //     window.saveActiveDoc();
+    // }
+
+    /*
+       Dotnet is still far from ideal in terms of a development language
+       There are definately very helpful things about it, but the developer
+       culture of accepting the barriers to intuitive understanding
+       can be somewhat detrimental to actually getting things done
+       quickly and effectively.
+    */
+
+
+    window.SaveToURL = async (url:string,name?:string) => {
 
       // This method is synchronous up until the post request.
-      // so we don't need a return value from it.
-      
+
       let appState = clearAppStateForLocalStorage(this.state);
-      let elements = globalSceneState.getElementsIncludingDeleted()
-
-      if (elements.length == 0){
-        console.log("aborting save, elements array was empty.");
-        return;
-      }      
-
-      
+      let elements = globalSceneState.getElements();
 
       let appStateJSON = JSON.stringify(appState)
       let elementsJSON = JSON.stringify(elements)
       let update = false;
 
-      if(name == ""){ // this is hacky AF
+      let statCodeString
+      let codeLeadingDigit
+
+      if(name == "" || name == undefined){ // this is hacky AF
         update = true;
        }
 
-      return await axios({ // hopefully this returns the ID. 
+       if (elements.length == 0 && update == true){
+        console.log("aborting save, elements array was empty.");
+       return;
+     }
+
+       let reqData =  {
+        elements:elementsJSON,
+        state:appStateJSON,
+        lastSaved:window.lastSuccessfulPut.toISOString(),
+      }
+
+      let result =  await axios({ // hopefully this returns the ID.
         method: update?'put':'post',
         url: url,
         headers: {
           'Access-Control-Allow-Origin': '*',
           'Content-Type':'application/json'
         },
-        data: {
-          elements:elementsJSON,
-          state:appStateJSON,
-          name:update?window.activeDocName:name,
+        // add the ID only if this is an update and the activeDocIndex isn't -1
+        data:((update && window.activeDocIndex !=-1)?{...reqData,id:window.activeDocIndex,name:window.activeDocName}:{...reqData,name:name,}),
         }
-      });
+      );
+      //  Blatent violation of dry :)  here twice because one is broken, I don't know which though.
+      window.lastHttpStatus = result.status+""
+      let leadingDigit = window.lastHttpStatus.substr(0,1);
+      if(leadingDigit === "2"){
+        window.lastSuccessfulPut = new Date();
+      }
+
+       statCodeString = result.status+""
+       codeLeadingDigit = statCodeString.substr(0,1)
+      if(codeLeadingDigit == "2"){
+        window.lastSuccessfulPut = new Date();
+      }
+
+
+      return result;
+    };
+    //
+
+      window.restoreFromURL = async (url: string) => {
+        this.setState({
+          isLoading: true
+        });
+
+        let scene = await loadScene(url);
+        this.syncActionResult(scene);
+
+        this.setState({
+          isLoading: false
+        });
     };
 
-    window.restoreFromURL = async (url: string) => {
-      let scene = await loadScene(url);
-      this.syncActionResult(scene);
-  };
-
-    window.fetchDocs = async () => {
-      // needs to fetch the docs list from the server,
-      // but that hasn't been set yet so.
-      let response = await axios.get(window.serverURL+"/names")
-      // should auto map
-      window.cloudDocs = response.data;
-      console.log(window.cloudDocs.length + "records fetched");
-      return response;
-  };
+      window.fetchDocs = async () => {
+        // needs to fetch the docs list from the server,
+        // but that hasn't been set yet so.
+        let response = await axios.get(window.serverURL+"/names")
+        // should auto map
+        window.cloudDocs = response.data;
+        return response.data;
+    };
 
     window.listDocs = async () => {
       if(window.cloudDocs){
-          window.cloudDocs.forEach((e) => 
+          window.cloudDocs.forEach((e) =>
         {console.log(`${e.id} ${e.name} ${e.dateLastSaved}`)});
       }
     }
@@ -407,63 +439,125 @@ class App extends React.Component<ExcalidrawProps, AppState> {
      // needs to set the serverURL value.
      console.log("Cloud server is now" + url);
      window.serverURL = url;
-     await window.fetchDocs(); // implemented, untested
-     await window.listDocs(); // 
+     let docList = await window.fetchDocs();
+     await window.listDocs();
      window.isCloudConnected = true;
      window.activeDocIndex = -1;
-  };
-
-  window.saveActiveDoc = async () => {
-      if(window.activeDocIndex>0){
-       await window.SaveToURL(window.serverURL+"/"+window.activeDocIndex,"")
-      } else {
-        console.log("save failed, no active doc")
-      }
-      return true; // Hack to ensure things are executed in order, find a better way to do this.
-  }
-
-  window.loadDoc = async (id:number) => {
-
-    // add exception handling for if you put the wrong number in here.
-
-    // Save the previous document if one was open
-    if(window.isCloudConnected && window.activeDocIndex>0){
-      let s = await window.saveActiveDoc();
-    }
-    
-    try {
-    let req = await window.restoreFromURL(window.serverURL+"/"+id);
-      if(req.status != 200) throw req;
-    window.activeDocIndex = id;
-
-    // this should probably live in it's own function
-    window.activeDocName = window.cloudDocs.filter(cd => cd.id == id)[0].name;
-    window.isCloudConnected = true;
-
-    console.log(`document number ${id} restored! from cloud.`)
-  }
-  catch {
-    console.log(" I'm sorryworry senpai, I couldn't fetch the document ~UwU")
-  }
-  }
-    
-  window.saveNewDoc = async (name:string) => {
-
-      let w = await window.SaveToURL(window.serverURL,name);
-      // Put the freeze here!
+     window.lastSuccessfulPut = new Date(1970,1,1);
+     let href = window.location.href
+     
+     // query parameter handling 
+     if (href.indexOf('?') != -1){
+      const urlParams = new URLSearchParams(window.location.search);
       
-      let l:CloudDocInfo[] = await window.fetchDocs();
-      // try catch block should go her
-      let doc = l.filter(l => {l.name = name});
+       if(href.indexOf('docId') != -1)
+        {
+          const docToLoad =  Number.parseInt(urlParams.get('docId')+"")
+          await window.loadDoc(docToLoad);
+        }
+     
+      if(href.indexOf('newDoc') != -1)
+        {
+          const newDocName =  urlParams.get('newDoc')+""
+          await window.saveNewDoc(newDocName);
+        }
 
-      window.loadDoc(doc[0].id);
-      console.log(`new doc saved with id: ${name}`)
+       if((href.indexOf('docName') != -1) && (href.indexOf('docId') == -1))
+       {
+        const docName =  urlParams.get('docName')+"".replace('+',' ')
+        let id = docList.filter((d:CloudDocInfo) => {return d.name == docName})
+        if(typeof id[0] !== undefined)
+          {
+            window.loadDoc(id.id);
+          }
+       }
+      }
+    };
+
+    window.saveActiveDoc = async () => {
+      let response;
+      if(window.activeDocIndex>0){
+        response = await window.SaveToURL(window.serverURL+"/"+window.activeDocIndex,"")
+        } else {
+          console.log("save failed, no active doc")
+        }
+        if(response.status == 400){
+          console.log("Doc is out of date, fetching latest version")
+          window.loadDoc(window.activeDocIndex,true);
+        }
+
+        return response; // Hack to ensure things are executed in order, find a better way to do this.
+    }
+
+
+
+    window.loadDoc = async (id:number,isRefresh?:boolean) => {
+      if(window.isCloudConnected && window.activeDocIndex>0 && (isRefresh == undefined || isRefresh == false)){
+        let s = await window.saveActiveDoc();
+        window.activeDocIndex = -1;
+      }
+
+      try {
+      let req = await window.restoreFromURL(window.serverURL+"/"+id);
+      window.activeDocIndex = id;
+      window.isCloudConnected = true;
+
+      await window.fetchDocs();
+
+      window.activeDocName = window.cloudDocs.filter(e => {return e.id==id})[0].name;
+
+      console.log(`document number ${id} restored! from cloud.`)
+
+      
+        let params = new URLSearchParams(window.location.search)
+        params.set("docId",id+"")
+        params.set("docName",window.activeDocName+"")
+        let newurl = window.location.protocol + "//" + window.location.host + window.location.pathname +"?"+ params.toString();
+        window.history.pushState({path:newurl},'',newurl);
+      
+
+    }
+      catch {
+        console.log(" I'm sorryworry senpai, I couldn't fetch the document ~UwU")
+      }
+    }
+
+    window.reloadDoc = () => {
+      if(window.activeDocIndex == -1){
+        console.log("there is no loaded doc!")
+        return
+    }
+
+    window.loadDoc(window.activeDocIndex);
   }
+
+    window.saveNewDoc = async (name:string) => {
+        let prevDocName = window.activeDocName;
+        let prevDocNo = window.activeDocIndex;
+        if(name == ""){
+          console.log("can't save document without a name")
+          return
+        }
+        try{
+          window.activeDocName = name;
+        let l = await window.SaveToURL(window.serverURL,name);
+
+        window.activeDocIndex = -1;
+        await window.loadDoc(l.data.id);  // name collision?
+        console.log(`new doc saved with id: ${l.data.id}`)
+        }
+        catch(e){
+          console.log("unable to save doc");
+          window.activeDocIndex = prevDocNo;
+          window.activeDocName = prevDocName;
+          if (e) console.log(e);
+      }
+    }
+   window.activateCloud("http://"+window.location.host + "/excalidrawapi/Excalidraw");
 }
 
+
   public render() {
-
-
     const {
       zenModeEnabled,
       width: canvasDOMWidth,
@@ -499,6 +593,7 @@ class App extends React.Component<ExcalidrawProps, AppState> {
           toggleZenMode={this.toggleZenMode}
           lng={getLanguage().lng}
         />
+        <Save docs={window.cloudDocs}></Save>
         <main>
           <canvas
             id="canvas"
@@ -3594,7 +3689,18 @@ class App extends React.Component<ExcalidrawProps, AppState> {
       if(window.isCloudConnected && window.activeDocIndex>0){
          window.saveActiveDoc();
       }
- 
+      if(window.firstReload){
+        window.firstReload = false;
+        let flurb = globalSceneState.getElements().filter(e => {return e.type == "text" && e.text.indexOf('$$$$') != -1})
+        if (flurb.length = 1){
+          let identityElem = flurb[0];
+          let identityTextElem:NonDeleted<ExcalidrawTextElement> = identityElem as NonDeleted<ExcalidrawTextElement>
+          let idText = identityTextElem.text.replace("$$$$","");
+          let id = Number.parseInt(idText.trim());
+          window.loadDoc(id);
+        }
+      }
+
   }, 300);
 }
 
